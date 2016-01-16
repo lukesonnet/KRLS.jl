@@ -37,11 +37,21 @@ function krls(Xinit, yinit; lambda = "empty")
   vcovmatc = sigmasq .* (K + eye(size(K, 1)) .* lambda)^-2
   vcovmatyhat = K' * (vcovmatc * K)
 
-  #for i in 1:d
-  #  for j in 1:n
-      #
-  #rows = hcat(repmat(reshape(collect(1:n), 1, n), n, 1)[:], repmat(collect(1:n), n, 1)[:])
-  return yfitted * yinit_sd + yinit_mean
+  derivmat = Array(Float64, n, d)
+  avgderivmat = Array(Float64, 1, d)
+  varavgderivmat = Array(Float64, 1, d)
+  tempL = Array(Float64, n, n)
+  # There is a lot of redundant information here (i.e. symmetric matrices)
+  for j in 1:d
+    for i in 1:n
+      tempL[i, :] = (K[:,i] .* (X[i, j] - X[:, j]))
+      derivmat[i, j] = (-2 / sigma) .* sum(coeffs .* squeeze(tempL[i, :], 1))
+    end
+    varavgderivmat[1, j] = (1 / n^2) .* sum((-2/sigma)^2 .* (tempL' * vcovmatc * tempL))
+  end
+  avgderivmat = mean(derivmat, 1)
+  
+  return coeffs, vcovmatc .* (yinit_sd^2)
 end
 
 # Solve for the choice coefficients
