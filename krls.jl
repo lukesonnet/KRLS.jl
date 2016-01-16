@@ -29,8 +29,19 @@ function krls(Xinit, yinit; lambda = "empty")
   end
 
   out = solveforc(y, K, lambda)
+  coeffs = out[1]
+  yfitted = K * coeffs
 
-  return K * out[1] * yinit_sd + yinit_mean, lambda
+  resid = y - yfitted
+  sigmasq = (1/n) .* (resid' * resid)
+  vcovmatc = sigmasq .* (K + eye(size(K, 1)) .* lambda)^-2
+  vcovmatyhat = K' * (vcovmatc * K)
+
+  #for i in 1:d
+  #  for j in 1:n
+      #
+  #rows = hcat(repmat(reshape(collect(1:n), 1, n), n, 1)[:], repmat(collect(1:n), n, 1)[:])
+  return yfitted * yinit_sd + yinit_mean
 end
 
 # Solve for the choice coefficients
@@ -65,7 +76,7 @@ function lambdasearch(y, K)
 
   X1 = L + (.381966)*(U-L)
   X2 = U - (.381966)*(U-L)
-  
+
   S1 = solveforc(y, K, X1)[2]
   S2 = solveforc(y, K, X2)[2]
 
@@ -92,7 +103,6 @@ function lambdasearch(y, K)
     return X2
   end
 end
-
 
 # Computes a Kernel matrix using the Gaussian Kernel
 function gausskernel(X, sigma)
