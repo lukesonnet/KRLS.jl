@@ -1,5 +1,7 @@
 using Distances
 
+# todo, carry around column names, perhaps change to accept data frame?
+
 type KRLS
   K::Array{Float64, 2}
   coeffs
@@ -36,7 +38,7 @@ function krls(Xinit::Array, yinit::Array; lambda = "empty")
   yinit_sd = std(y)
 
   for i in 1:size(X, 2)
-    X[:, i] = X[:, i] / Xinit_sd[i]
+    X[:, i] = (X[:, i] - Xinit_mean[i]) / Xinit_sd[i]
   end
   y = (y - yinit_mean) / yinit_sd
 
@@ -85,8 +87,18 @@ function krls(Xinit::Array, yinit::Array; lambda = "empty")
 
   R2 = 1 - (var(yinit - yfitted)/(yinit_sd^2))
 
-  return KRLS(K, coeffs, Looe, yfitted, Xinit, yinit, sigma, lambda, R2,
+  k = KRLS(K, coeffs, Looe, yfitted, Xinit, yinit, sigma, lambda, R2,
               derivmat, avgderivmat, varavgderivmat, vcov_c, vcov_fitted)
+
+  # Calculates first differences for binary variables
+  #for j in 1:d
+  #  if size(unique(Xinit[:, j]), 1) == 2
+  #    X0 = deepcopy(Xinit)
+  #    X1 = deepcopy(Xinit)
+  #    X1[:, j] = maximum(X1[:, j])
+  #    X0[:, j] = minimum(X0[:, j])
+
+  return k
 end
 
 # Solve for the choice coefficients
@@ -164,4 +176,32 @@ function Base.show(io::IO,k::KRLS)
     deriv_quantile = round(quantile(k.derivatives[:, j], [0.25, 0.5, 0.75]), 4)
     println(io, "Var $j: $deriv_quantile")
   end
+end
+
+# todo: dimension and name checking here
+function predict(k::KRLS, newmatinit::Array)
+
+  n = size(k.X, 1)
+
+  X = deepcopy(k.X)
+  Xinit_sd = std(X, 1)
+  Xinit_mean = mean(X, 1)
+  newmat = float(deepcopy(newmatinit))
+
+  for i in 1:size(X, 2)
+    X[:, i] = (X[:, i] - Xinit_mean[i]) / Xinit_sd[i]
+    newmat[:, i] = (newmat[:, i] - Xinit_mean[i]) / Xinit_sd[i]
+  end
+
+  nn = size(newmat, 1)
+
+  newK = gausskernel(vcat(newmat, X), k.sigma)[1:nn, (nn + 1):(nn + n)]
+
+  yfitted = newK * k.coeffs
+
+  # todo: add standard errors
+
+  yfitted = yfitted .* std(k.y) .+ mean(k.y)
+
+  return yfitted
 end
