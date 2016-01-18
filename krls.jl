@@ -1,9 +1,27 @@
 using Distances
 
+type KRLS
+  K::Array{Float64, 2}
+  coeffs
+  Looe
+  fitted
+  X::Array{Float64, 2}
+  y
+  sigma
+  lambda
+  R2::Float64
+  derivatives::Array{Float64, 2}
+  avgderivatives::Array{Float64, 2}
+  var_avgderivatives::Array{Float64, 2}
+  vcov_c::Array{Float64, 2}
+  vcov_fitted::Array{Float64, 2}
+end
+
 # Main KRLS function, takes a 2-dimensional array and a vector, for now
 # requires fixed lambda
-function krls(Xinit, yinit; lambda = "empty")
+function krls(Xinit::Array, yinit::Array; lambda = "empty")
   Xinit = float(Xinit)
+  yinit = float(yinit)
 
   n = size(Xinit, 1)
   d = size(Xinit, 2)
@@ -58,7 +76,8 @@ function krls(Xinit, yinit; lambda = "empty")
 
   R2 = 1 - (var(yinit - yfitted)/(yinit_sd^2))
 
-  return yfitted
+  return KRLS(K, coeffs, Looe, yfitted, Xinit, yinit, sigma, lambda, R2,
+              derivmat, avgderivmat, varavgderivmat, vcov_c, vcov_fitted)
 end
 
 # Solve for the choice coefficients
