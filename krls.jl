@@ -13,10 +13,10 @@ type KRLS
   lambda
   R2::Float64
   derivatives::Array{Float64, 2}
-  avgderivatives::Array{Float64, 2}
-  var_avgderivatives::Array{Float64, 2}
+  avgderivatives
+  var_avgderivatives
   vcov_c::Array{Float64, 2}
-  vcov_fitted::Array{Float64, 2}
+  vcov_fitted
 end
 
 # Main KRLS function, takes a 2-dimensional array and a vector, for now
@@ -91,12 +91,24 @@ function krls(Xinit::Array, yinit::Array; lambda = "empty")
               derivmat, avgderivmat, varavgderivmat, vcov_c, vcov_fitted)
 
   # Calculates first differences for binary variables
-  #for j in 1:d
-  #  if size(unique(Xinit[:, j]), 1) == 2
-  #    X0 = deepcopy(Xinit)
-  #    X1 = deepcopy(Xinit)
-  #    X1[:, j] = maximum(X1[:, j])
-  #    X0[:, j] = minimum(X0[:, j])
+  for j in 1:d
+    if size(unique(Xinit[:, j]), 1) == 2
+      X0 = deepcopy(Xinit)
+      X1 = deepcopy(Xinit)
+      X1[:, j] = maximum(X1[:, j])
+      X0[:, j] = minimum(X0[:, j])
+
+      Xall = vcat(X1, X0)
+      fit, sefit, vcovfit = predict(k, Xall)
+      est = 0
+
+      h = hcat(repmat([1/n], 1, n), repmat([-1/n], 1, n))
+
+      k.avgderivatives[j] = (h * fit)[1]
+      k.var_avgderivatives[j] = ((h * vcovfit * h') .* 2)[1]
+      k.derivatives[:, j] = fit[1:n] - fit[(n+1):(2*n)]
+    end
+  end
 
   return k
 end
@@ -182,11 +194,11 @@ end
 function predict(k::KRLS, newmatinit::Array)
 
   n = size(k.X, 1)
-
+  newmatinit = float(newmatinit)
   X = deepcopy(k.X)
   Xinit_sd = std(X, 1)
   Xinit_mean = mean(X, 1)
-  newmat = float(deepcopy(newmatinit))
+  newmat = deepcopy(newmatinit)
 
   for i in 1:size(X, 2)
     X[:, i] = (X[:, i] - Xinit_mean[i]) / Xinit_sd[i]
@@ -199,9 +211,11 @@ function predict(k::KRLS, newmatinit::Array)
 
   yfitted = newK * k.coeffs
 
-  # todo: add standard errors
+  vcovc_raw = k.vcov_c .* (1 / var(k.y))
+  vcovfit = std(k.y)^2 .* (newK * vcovc_raw * newK')
+  sefit = sqrt(diag(vcovfit))
 
   yfitted = yfitted .* std(k.y) .+ mean(k.y)
 
-  return yfitted
+  return yfitted, sefit, vcovfit
 end
