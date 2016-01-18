@@ -11,6 +11,7 @@ This script (very much under construction) implements Kernel Regularized Least S
 Required
 * `Xinit` - your data matrix, observations are the first dimension, features are the second dimension
 * `yinit` - your response vector
+
 Optional
 * `lambda` - default is to fit using leave-one-out-cross-validation, but the user can specify any number greater than 0
 
