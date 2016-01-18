@@ -68,6 +68,15 @@ function krls(Xinit::Array, yinit::Array; lambda = "empty")
   end
   avgderivmat = mean(derivmat, 1)
 
+  derivmat = yinit_sd .* derivmat
+  avgderivmat = yinit_sd .* avgderivmat
+
+  for j in 1:d
+    derivmat[:, j] = derivmat[:, j] ./ Xinit_sd[j]
+    avgderivmat[j] = avgderivmat[j] ./ Xinit_sd[j]
+    varavgderivmat[j] = varavgderivmat[j] .* (yinit_sd ./ Xinit_sd[j])^2
+  end
+
   yfitted = yfitted * yinit_sd + yinit_mean
   vcov_c = vcovmatc * (yinit_sd^2)
   vcov_fitted = vcovmatyhat * (yinit_sd^2)
@@ -143,4 +152,16 @@ end
 # Computes a Kernel matrix using the Gaussian Kernel
 function gausskernel(X, sigma)
   return exp(-1 .* pairwise(Euclidean(), X').^2 ./ sigma)
+end
+
+function Base.show(io::IO,k::KRLS)
+  println(io,"KRLS results")
+  println(io,"------------------------------------")
+  println(io,"Average Marginal Effects:")
+  println(io,round(k.avgderivatives, 4))
+  println(io,"Quartiles of Marginal Effects")
+  for j in 1:size(k.derivatives, 2)
+    deriv_quantile = round(quantile(k.derivatives[:, j], [0.25, 0.5, 0.75]), 4)
+    println(io, "Var $j: $deriv_quantile")
+  end
 end
