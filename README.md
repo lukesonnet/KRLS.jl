@@ -18,7 +18,7 @@ Optional
 
 The method only outputs one object, a `KRLS` object, from which the following can be retrieved:
 * `K` - the kernel matrix
-* `coeffs` - the choice coefficeints
+* `coeffs` - the choice coefficients
 * `Looe` - the final leave-one-out error
 * `fitted` - fitted `y` values
 * `X` - original `X` matrix
