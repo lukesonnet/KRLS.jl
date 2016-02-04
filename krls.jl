@@ -28,8 +28,7 @@ function krls(Xinit, yinit; lambda = "empty")
     lambda = lambdasearch(y, K)
   end
 
-  out = solveforc(y, K, lambda)
-  coeffs = out[1]
+  coeffs, Le = solveforc(y, K, lambda)
   yfitted = K * coeffs
 
   resid = y - yfitted
@@ -50,8 +49,16 @@ function krls(Xinit, yinit; lambda = "empty")
     varavgderivmat[1, j] = (1 / n^2) .* sum((-2/sigma)^2 .* (tempL' * vcovmatc * tempL))
   end
   avgderivmat = mean(derivmat, 1)
-  
-  return coeffs, vcovmatc .* (yinit_sd^2)
+
+  yfitted = yfitted * yinit_sd + yinit_mean
+  vcov_c = vcovmatc * (yinit_sd^2)
+  vcov_fitted = vcovmatyhat * (yinit_sd^2)
+
+  Looe = Le * yinit_sd
+
+  R2 = 1 - (var(yinit - yfitted)/(yinit_sd^2))
+
+  return yfitted
 end
 
 # Solve for the choice coefficients
